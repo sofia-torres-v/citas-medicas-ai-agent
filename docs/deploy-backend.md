@@ -2,6 +2,9 @@
 
 Esta guía explica cómo preparar el entorno local, ejecutar las pruebas unitarias y desplegar la infraestructura serverless del proyecto utilizando **AWS SAM CLI**.
 
+> **¿Es tu primera vez con este proyecto?**
+> Esta es la primera guía que debes seguir. Al finalizar tendrás el backend desplegado en AWS y las especialidades iniciales cargadas. Después podrás continuar con la [Configuración de Amazon Connect](amazon-connect-setup.md).
+
 ---
 
 ## 1. Requisitos Previos
@@ -11,7 +14,7 @@ Antes de comenzar, asegúrate de tener instalado:
 * **Python 3.13**
 * **AWS SAM CLI**
 
-  * [Instalación oficial de AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
+  * [Instalación oficial de AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html?utm_source=chatgpt.com)
 * **AWS CLI**, configurado con credenciales activas.
 * **Docker Desktop** *(opcional, solo necesario para ejecutar Lambda localmente con `sam local invoke`)*.
 
@@ -28,6 +31,8 @@ Para verificar que AWS CLI tiene una identidad configurada:
 ```powershell
 aws sts get-caller-identity
 ```
+
+Si este comando devuelve información de tu cuenta de AWS, las credenciales están configuradas correctamente.
 
 ---
 
@@ -57,9 +62,19 @@ python -m venv .venv
 
 ### Instalar dependencias
 
+Las dependencias del backend se encuentran en `src/requirements.txt`:
+
 ```powershell
-pip install -r requirements.txt
+pip install -r src/requirements.txt
 ```
+
+Para ejecutar las pruebas también necesitas `pytest`:
+
+```powershell
+pip install pytest
+```
+
+> **Nota:** AWS SAM utiliza `src/requirements.txt` automáticamente durante `sam build` para instalar las dependencias de la función Lambda.
 
 ---
 
@@ -83,7 +98,7 @@ Actualmente el proyecto cuenta con **28 pruebas unitarias**:
 | `test_handlers.py` | Reglas de negocio para agendar, consultar, cancelar y reagendar |       13 |
 | **Total**          |                                                                 |   **28** |
 
-Resultado actual:
+Resultado esperado:
 
 ```text
 28 passed
@@ -117,9 +132,9 @@ El proyecto utiliza:
 CodeUri: src/
 ```
 
-Esto indica que el contenido de `src/` será empaquetado como código de la función Lambda.
+Esto indica que el contenido de `src/` será utilizado como código de la función Lambda.
 
-Por ello, los módulos internos se importan directamente, por ejemplo:
+Por ejemplo, los módulos internos pueden importarse directamente:
 
 ```python
 from channel_adapter import extraer_parametros
@@ -177,6 +192,8 @@ El script carga las especialidades utilizadas por el asistente:
 * Dermatología
 * Oftalmología
 
+Estos datos permiten que el backend pueda validar las especialidades utilizadas durante las conversaciones.
+
 ---
 
 ## 6. Verificar el Despliegue
@@ -220,6 +237,8 @@ events/evento_connect_disponibilidad.json
 
 contiene datos ficticios para realizar esta prueba.
 
+> El archivo `respuesta.json` es un resultado local de la prueba y está excluido del repositorio mediante `.gitignore`.
+
 ---
 
 ## 7. Prueba Local del Lambda
@@ -234,7 +253,9 @@ sam local invoke CitasMedicasFunction `
 
 Esta opción permite validar cambios localmente antes de realizar un nuevo despliegue.
 
-La ejecución local con Docker es **opcional**. Si `sam local invoke` presenta problemas relacionados con Docker o la red, puedes utilizar `aws lambda invoke` para probar directamente la función desplegada en AWS.
+La ejecución local con Docker es **opcional**.
+
+Si `sam local invoke` presenta problemas relacionados con Docker o la red, puedes utilizar `aws lambda invoke` para probar directamente la función desplegada en AWS.
 
 ---
 
@@ -277,9 +298,9 @@ Integración con Amazon Connect
 
 Una vez desplegada la infraestructura y cargadas las especialidades, el backend queda preparado para conectarse con el **AI Agent mediante Amazon Connect**.
 
-Para configurar la integración completa con Amazon Connect, Amazon Lex y Amazon Q in Connect, consulta:
+Para configurar la integración completa con Amazon Connect, Amazon Lex y Amazon Q in Connect, continúa con:
 
-[`amazon-connect-setup.md`](amazon-connect-setup.md)
+**[→ Configuración de Amazon Connect](amazon-connect-setup.md)**
 
 ---
 

@@ -2,13 +2,28 @@
 
 Asistente conversacional para la gestión de citas médicas mediante **chat en Amazon Connect**. Permite consultar disponibilidad, agendar, consultar, reagendar y cancelar citas utilizando lenguaje natural.
 
-Un **AI Agent (Amazon Q in Connect, tipo Orchestration)** gestiona la conversación y el razonamiento, mientras que este repositorio contiene el backend serverless (**AWS Lambda + DynamoDB**) que ejecuta las reglas de negocio y procesa las operaciones sobre las citas.
+El proyecto utiliza un **AI Agent de Amazon Q in Connect** para gestionar la conversación y el razonamiento, mientras que **AWS Lambda + DynamoDB** ejecutan las operaciones relacionadas con las citas.
 
 ---
 
-## 1. Arquitectura
+## 1. ¿Qué es este proyecto?
 
-El proyecto nació como una comparación técnica entre un bot de **Amazon Lex V2 tradicional** (basado en intents/slots) y una arquitectura basada en **AI Agents (LLMs con Tools)**.
+Este proyecto muestra cómo construir un asistente conversacional para gestionar citas médicas utilizando servicios serverless de AWS.
+
+La arquitectura combina:
+
+* **Amazon Connect** para la experiencia conversacional.
+* **Amazon Lex V2** como puente hacia el AI Agent.
+* **Amazon Q in Connect** para el razonamiento del agente.
+* **Flow Module** como herramienta (Tool) del agente.
+* **AWS Lambda** para ejecutar las operaciones.
+* **DynamoDB** como base de datos.
+
+El proyecto también nació como una comparación entre un bot tradicional basado en **Amazon Lex V2 + intents/slots** y una arquitectura basada en **AI Agents + Tools**.
+
+---
+
+## 2. Arquitectura
 
 ![Arquitectura](docs/assets/arquitectura.png)
 
@@ -45,91 +60,101 @@ Repository Pattern
 DynamoDB
 ```
 
----
-
-## 2. Estructura del Proyecto
-
-El código está deliberadamente desacoplado en capas para separar la entrada desde Amazon Connect, la lógica de negocio y el acceso a datos.
-
-```text
-citas-medicas-ai-agent/
-
-├── template.yaml                 # Infraestructura como código (SAM: Lambda + DynamoDB + IAM)
-├── src/                          # Código fuente desplegado en Lambda
-│   ├── lambda_function.py        # Router de entrada
-│   ├── channel_adapter.py        # Adaptador de formato (Connect String Map <-> Dict)
-│   ├── repository.py             # Operaciones DynamoDB (Repository Pattern)
-│   ├── utils.py                  # Normalización y utilidades puras
-│   └── handlers/                 # Reglas de negocio
-│
-├── tests/                        # Pruebas unitarias con pytest y unittest.mock
-│
-├── events/                       # Eventos utilizados para pruebas
-│
-├── scripts/                      # Scripts de utilidades
-│   └── seed_especialidades.py    # Carga inicial de especialidades
-│
-└── docs/                         # Guías de configuración y arquitectura
-    ├── deploy-backend.md         # Guía de despliegue del backend
-    ├── amazon-connect-setup.md   # Configuración de Amazon Connect
-    ├── prompt-agente.md          # Reglas del AI Agent
-    └── troubleshooting.md        # Problemas y limitaciones
-```
+El AI Agent decide qué necesita hacer y cuándo utilizar la herramienta. El backend ejecuta las reglas de negocio y devuelve el resultado al agente.
 
 ---
 
-## 3. Guías de Instalación y Configuración
+## 3. Empezar desde cero
 
-Para desplegar y configurar el proyecto, consulta las siguientes guías:
+### ¿Es tu primera vez con este proyecto?
 
-* 🚀 [Despliegue del Backend (SAM + Lambda + DynamoDB)](docs/deploy-backend.md)
-* 🛠️ [Configuración en Amazon Connect, Lex y Q in Connect](docs/amazon-connect-setup.md)
-* 📜 [Prompt y reglas del AI Agent](docs/prompt-agente.md)
-* ❓ [Troubleshooting y limitaciones conocidas](docs/troubleshooting.md)
+Si acabas de clonar el repositorio y quieres reproducir la solución completa, sigue este orden:
+
+### Paso 1. Preparar y desplegar el Backend
+
+Primero configura Python, ejecuta las pruebas y despliega:
+
+**[→ Guía de Despliegue del Backend](docs/deploy-backend.md)**
+
+Esta guía cubre:
+
+* Preparación del entorno Python.
+* Pruebas unitarias.
+* Validación y construcción con AWS SAM.
+* Despliegue de Lambda, DynamoDB e IAM.
+* Carga de las especialidades.
+* Verificación del Lambda desplegado.
+
+### Paso 2. Configurar Amazon Connect y el AI Agent
+
+Una vez desplegado el backend, continúa con:
+
+**[→ Guía de Configuración de Amazon Connect](docs/amazon-connect-setup.md)**
+
+Esta guía explica, en orden, cómo configurar:
+
+1. Dominio de Amazon Q in Connect.
+2. Flow Module que funciona como Tool.
+3. Permisos del Security Profile.
+4. AI Agent de tipo Orchestration.
+5. Prompt y reglas del agente.
+6. Publicación del AI Agent.
+7. Bot puente de Amazon Lex.
+8. Contact Flow principal.
+
+> **Importante:** el backend debe estar desplegado antes de configurar la Tool, porque necesitas el ARN de la función Lambda.
+
+### Paso 3. Configurar el comportamiento del agente
+
+Las reglas de conversación y las acciones que puede ejecutar el agente están documentadas aquí:
+
+**[→ Prompt y reglas del AI Agent](docs/prompt-agente.md)**
+
+### Paso 4. Si encuentras algún problema
+
+Consulta:
+
+**[→ Troubleshooting y limitaciones conocidas](docs/troubleshooting.md)**
 
 ---
 
-## 4. Requisitos Previos
+## 4. Quickstart del Backend
 
-* Python 3.13
-* AWS SAM CLI
-* AWS CLI configurado
-* Cuenta de AWS
-* Cuenta de Amazon Connect con Amazon Q in Connect activo
+### ¿Ya conoces el proyecto y solo quieres levantar el backend?
 
-> Docker Desktop es opcional y solo es necesario para ejecutar Lambda localmente mediante `sam local invoke`.
+Si ya sabes cómo funciona la arquitectura y solo necesitas preparar o desplegar el backend, puedes utilizar este flujo rápido.
 
----
-
-## 5. Quickstart Backend
-
-Si acabas de clonar el repositorio y quieres preparar el entorno local:
+### Clonar el repositorio
 
 ```powershell
 git clone <URL_DEL_REPOSITORIO>
 
 cd citas-medicas-ai-agent
+```
 
+### Crear el entorno virtual
+
+```powershell
 python -m venv .venv
 
 .venv\Scripts\Activate.ps1
+```
 
+### Instalar dependencias
+
+```powershell
 pip install -r requirements.txt
 ```
 
-### 5.1 Ejecutar pruebas unitarias
-
-Puedes validar la lógica de negocio antes del despliegue:
+### Ejecutar pruebas
 
 ```powershell
 pytest tests/ -v
 ```
 
-Las pruebas se ejecutan localmente y no requieren servicios de AWS.
+Actualmente el proyecto cuenta con **28 pruebas unitarias**.
 
-### 5.2 Construir el proyecto
-
-Valida la plantilla SAM y construye el paquete de despliegue:
+### Validar y construir
 
 ```powershell
 sam validate
@@ -137,50 +162,84 @@ sam validate
 sam build
 ```
 
-### 5.3 Primer despliegue en AWS
-
-Si es la primera vez que despliegas el proyecto, utiliza el modo guiado:
+### Primer despliegue
 
 ```powershell
 sam deploy --guided
 ```
 
-Durante este proceso SAM solicitará información como el nombre del stack, región y configuración de permisos.
+### Siguientes despliegues
 
-Una vez completada la configuración inicial, los siguientes despliegues pueden realizarse simplemente con:
+Después de completar la configuración inicial:
 
 ```powershell
 sam deploy
 ```
 
-### 5.4 Cargar datos iniciales
-
-Después del despliegue, carga las especialidades iniciales:
+### Cargar datos iniciales
 
 ```powershell
 python scripts/seed_especialidades.py
 ```
 
-💡 **¿Primera vez desplegando el backend?**
-
-Consulta la [Guía Completa de Despliegue del Backend](docs/deploy-backend.md) para conocer los requisitos, la configuración de AWS SAM, las pruebas, la verificación del despliegue y la ejecución local con Docker.
+> Para conocer el proceso completo de despliegue, incluyendo la configuración de AWS, verificación del stack y pruebas del Lambda, consulta [`docs/deploy-backend.md`](docs/deploy-backend.md).
 
 ---
 
-## 6. Resultado de las Pruebas Unitarias
+## 5. Estructura del Proyecto
+
+El código está separado en capas para mantener aisladas la entrada desde Amazon Connect, la lógica de negocio y el acceso a datos.
+
+```text
+citas-medicas-ai-agent/
+
+├── template.yaml                 # Infraestructura como código (SAM)
+│
+├── src/
+│   ├── lambda_function.py        # Router de entrada
+│   ├── channel_adapter.py        # Adaptador del formato de Connect
+│   ├── repository.py             # Operaciones DynamoDB
+│   ├── utils.py                  # Utilidades y normalización
+│   └── handlers/                 # Reglas de negocio
+│
+├── tests/                        # Pruebas unitarias
+│
+├── events/                       # Eventos utilizados para pruebas
+│
+├── scripts/
+│   └── seed_especialidades.py    # Carga inicial de especialidades
+│
+└── docs/
+    ├── deploy-backend.md         # Despliegue del backend
+    ├── amazon-connect-setup.md   # Configuración de Connect
+    ├── prompt-agente.md          # Prompt y reglas del agente
+    └── troubleshooting.md        # Problemas y limitaciones
+```
+
+---
+
+## 6. Resultado de las Pruebas
 
 Las pruebas se ejecutan **100% en memoria**, sin consumir servicios reales de AWS.
 
-| Módulo de prueba   | Descripción                                        | Pruebas | Resultado       |
+| Módulo             | Descripción                                        | Pruebas | Resultado       |
 | ------------------ | -------------------------------------------------- | ------: | --------------- |
 | `test_handlers.py` | Lógica de agendar, consultar, cancelar y reagendar |      13 | PASSED          |
 | `test_utils.py`    | Normalización de datos y extracción de códigos     |      15 | PASSED          |
 | **Total**          | **Cobertura de las reglas de negocio**             |  **28** | **100% PASSED** |
 
+Ejecutar:
+
+```powershell
+pytest tests/ -v
+```
+
 ---
 
-## 7. Nota sobre Datos
+## 7. Datos de Prueba
 
-Este proyecto utiliza datos ficticios para demostración y pruebas.
+Este proyecto utiliza **datos ficticios** para demostración y pruebas.
 
-No utilizar información real de pacientes ni datos personales en los archivos de prueba, eventos o logs.
+No utilizar información real de pacientes ni datos personales
+
+Las credenciales de AWS tampoco deben almacenarse dentro del repositorio.
