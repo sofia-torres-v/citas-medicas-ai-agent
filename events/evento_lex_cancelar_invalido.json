@@ -1,0 +1,11 @@
+{
+  "sessionState": {
+    "sessionAttributes": {},
+    "intent": {
+      "name": "CancelarCitaIntent",
+      "slots": {
+        "codigo_cita": {"value": {"interpretedValue": "medicina"}}
+      }
+    }
+  }
+}

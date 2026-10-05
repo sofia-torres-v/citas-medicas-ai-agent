@@ -1,0 +1,36 @@
+# Entornos virtuales y cachés locales
+.venv/
+.aws-sam/
+.pytest_cache/
+__pycache__/
+*.pyc
+
+# Pruebas y eventos locales (no necesarios dentro del ZIP de la Lambda)
+tests/
+events/
+
+# Archivos de control de versiones
+.gitignore
+.git/
+
+# Documentación local
+README.md
+BITACORA.md
+
+# Dependencias ya provistas por el runtime de AWS Lambda (Boto3/Botocore)
+boto3/
+boto3-*.dist-info
+botocore/
+botocore-*.dist-info
+s3transfer/
+s3transfer-*.dist-info
+
+# Librerías de prueba (solo para desarrollo local)
+pytest/
+_pytest/
+pluggy/
+pluggy-*.dist-info
+pygments/
+pygments-*.dist-info
+iniconfig/
+iniconfig-*.dist-info

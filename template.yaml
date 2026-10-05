@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Citas Medicas - Lambda de negocio (agendar, consultar, cancelar,
+  reagendar, disponibilidad) + tablas DynamoDB. Este template SAM cubre
+  solo Lambda + DynamoDB + IAM; los recursos de Amazon Connect, Lex y
+  Amazon Q in Connect (dominio, AI Agent, tools) se gestionan desde
+  consola por su soporte limitado de CloudFormation, y quedan
+  documentados manualmente en BITACORA.md.
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Timeout: 8
+    MemorySize: 128
+    Environment:
+      Variables:
+        ESPECIALIDADES_TABLE: !Ref EspecialidadesTable
+        CITAS_TABLE: !Ref CitasTable
+
+Resources:
+
+  EspecialidadesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: citas-medicas-especialidades
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: especialidad
+          AttributeType: S
+      KeySchema:
+        - AttributeName: especialidad
+          KeyType: HASH
+
+  CitasTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: citas-medicas-citas
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: documento
+          AttributeType: S
+        - AttributeName: codigo
+          AttributeType: S
+        - AttributeName: especialidad_fecha
+          AttributeType: S
+      KeySchema:
+        - AttributeName: documento
+          KeyType: HASH
+        - AttributeName: codigo
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: codigo-index
+          KeySchema:
+            - AttributeName: codigo
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: especialidad-fecha-index
+          KeySchema:
+            - AttributeName: especialidad_fecha
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  CitasMedicasFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: citas-medicas-ai-agent
+      # CodeUri: todo el repo (no solo src/) porque el código usa imports
+      # tipo "from src.handlers import ..." — lo que no deba empaquetarse
+      # (tests, .venv, events, docs) se filtra con .samignore.
+      CodeUri: src/
+      Handler: lambda_function.lambda_handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref EspecialidadesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CitasTable
+
+Outputs:
+  FunctionArn:
+    Description: ARN del Lambda (esto es lo que va en el Flow Module / tool de Connect)
+    Value: !GetAtt CitasMedicasFunction.Arn
+  EspecialidadesTableName:
+    Value: !Ref EspecialidadesTable
+  CitasTableName:
+    Value: !Ref CitasTable
