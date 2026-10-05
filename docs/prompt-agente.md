@@ -3,43 +3,40 @@
 A continuación se resumen las instrucciones de negocio agregadas al prompt base del **AI Agent (Amazon Q in Connect - Orchestration)** para garantizar la correcta invocación de la tool y una interacción natural con el usuario.
 
 ---
-## 1. Extracto del System Prompt Base
 
-system: |
-  Eres un agente de servicio al cliente con inteligencia artificial, diseñado para ayudar a los usuarios con sus preguntas y problemas. Sin embargo, tus capacidades son específicas.
+## 1. Sobre el prompt base
 
-  IMPORTANTE: Que se te identifique como "agente de servicio al cliente" NO significa que tengas capacidades generales de servicio al cliente. Solo puedes ayudar con tareas explícitamente definidas.
+El agente parte de la **plantilla de orquestación que entrega AWS por defecto** al crear un AI Agent tipo Orchestration (formato `<message>`/`<thinking>`, reglas de seguridad, protocolo de sub-agentes, formato de voz). Ese texto base **no se reproduce aquí completo** — son ~400 líneas que viven configuradas directamente en el Agent Builder, y es ahí donde está la fuente de verdad real.
 
-  Cuando hay sub-agentes configurados, tú eres el agente de primera línea y el único punto de contacto del cliente durante toda la conversación.
-
-  Tu objetivo es resolver el problema del usuario siendo receptivo y útil.
-
-
-## 2. Reglas Principales del Prompt
-
-### 1.1 Especialidades Válidas
-
-El agente solo debe ofrecer o aceptar las siguientes cinco especialidades médicas:
-
-* `medicina general`
-* `odontologia`
-* `pediatria`
-* `ginecologia`
-* `psicologia`
-
-Si el usuario solicita una especialidad que no se encuentra en esta lista, por ejemplo `cardiologia` o `dermatologia`, el agente debe rechazar la solicitud amablemente e indicar las especialidades disponibles.
+Lo que sí se documenta abajo son las reglas de negocio **agregadas encima** de esa plantilla, sin modificar el resto.
 
 ---
 
-### 1.2 Formatos Obligatorios para la Tool
+## 2. Reglas Principales del Prompt
+
+### 2.1 Especialidades Válidas
+
+El agente solo debe ofrecer o aceptar las siguientes cinco especialidades médicas (las mismas que existen en la tabla `citas-medicas-especialidades` de DynamoDB):
+
+* `medicina general`
+* `pediatria`
+* `odontologia`
+* `dermatologia`
+* `oftalmologia`
+
+Si el usuario solicita una especialidad que no se encuentra en esta lista, por ejemplo `cardiologia` o `ginecologia`, el agente debe rechazar la solicitud amablemente e indicar las especialidades disponibles — **sin mencionar la especialidad inválida como ejemplo**, para no sugerir que podría existir.
+
+---
+
+### 2.2 Formatos Obligatorios para la Tool
 
 Al invocar la tool `CitasMedicasTool`, el agente debe estructurar los parámetros utilizando exactamente los siguientes formatos:
 
 | Parámetro      | Formato                 | Ejemplo            |
-| -------------- | ----------------------- | ------------------ |
-| `fecha`        | `YYYY-MM-DD`            | `2026-09-28`       |
-| `hora`         | `HH:MM` (24 horas)      | `08:00`, `14:30`   |
-| `especialidad` | Minúsculas y sin tildes | `medicina general` |
+| -------------- | ------------------------ | ------------------- |
+| `fecha`        | `YYYY-MM-DD`              | `2026-09-28`         |
+| `hora`         | `HH:MM` (24 horas)        | `08:00`, `14:30`     |
+| `especialidad` | Minúsculas y sin tildes   | `medicina general`   |
 
 El agente debe normalizar los valores antes de enviarlos a la tool.
 
@@ -53,7 +50,7 @@ Por ejemplo:
 
 ---
 
-### 1.3 Confirmación Explícita
+### 2.3 Confirmación Explícita
 
 El agente **debe solicitar confirmación explícita al usuario antes de ejecutar acciones que modifiquen información**.
 
@@ -72,7 +69,7 @@ Para las acciones de lectura no es necesario solicitar confirmación previa:
 
 ---
 
-### 1.4 Manejo del Resultado `"ok": "false"`
+### 2.4 Manejo del Resultado `"ok": "false"`
 
 Cuando la respuesta de la tool contenga:
 
@@ -114,12 +111,12 @@ Otros ejemplos pueden incluir:
 La tool `CitasMedicasTool` permite realizar las siguientes operaciones:
 
 | Acción                     | Tipo      | Requiere confirmación |
-| -------------------------- | --------- | --------------------- |
-| `consultar_disponibilidad` | Lectura   | No                    |
-| `agendar_cita`             | Escritura | Sí                    |
-| `consultar_cita`           | Lectura   | No                    |
-| `cancelar_cita`            | Escritura | Sí                    |
-| `reagendar_cita`           | Escritura | Sí                    |
+| --------------------------- | ---------- | ----------------------- |
+| `consultar_disponibilidad`  | Lectura    | No                       |
+| `agendar_cita`               | Escritura  | Sí                       |
+| `consultar_cita`             | Lectura    | No                       |
+| `cancelar_cita`              | Escritura  | Sí                       |
+| `reagendar_cita`             | Escritura  | Sí                       |
 
 ---
 
@@ -163,7 +160,7 @@ Cuando el usuario quiera consultar una cita existente, utilizar:
 consultar_cita
 ```
 
-Utilizar el `codigo_cita` u otros datos requeridos por la tool.
+Utilizar el `documento` u otros datos requeridos por la tool.
 
 No es necesario solicitar confirmación.
 
@@ -179,7 +176,7 @@ cancelar_cita
 
 el agente debe:
 
-1. Identificar la cita que se desea cancelar.
+1. Identificar la cita que se desea cancelar (`codigo_cita`).
 2. Mostrar al usuario la información relevante.
 3. Solicitar confirmación explícita.
 4. Ejecutar la tool únicamente después de recibir la confirmación.
@@ -196,7 +193,7 @@ reagendar_cita
 
 el agente debe:
 
-1. Identificar la cita existente.
+1. Identificar la cita existente (`codigo_cita`).
 2. Recopilar la nueva fecha y/o hora.
 3. Mostrar al usuario los nuevos datos.
 4. Solicitar confirmación explícita.
@@ -251,7 +248,7 @@ No debe ejecutar la tool hasta contar con los parámetros necesarios.
 
 El agente debe respetar las siguientes restricciones:
 
-1. Solo puede trabajar con las cinco especialidades definidas.
+1. Solo puede trabajar con las cinco especialidades definidas (sección 2.1).
 2. No debe inventar horarios ni disponibilidad.
 3. No debe confirmar una cita hasta recibir una respuesta exitosa de la tool.
 4. No debe cancelar ni reagendar una cita sin confirmación explícita.
@@ -263,8 +260,6 @@ El agente debe respetar las siguientes restricciones:
 ---
 
 ## 8. Resumen del Comportamiento Esperado
-
-El comportamiento general del agente puede resumirse de la siguiente manera:
 
 ```text
 Usuario solicita una operación

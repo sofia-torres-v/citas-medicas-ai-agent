@@ -75,14 +75,18 @@ Ejecuta:
 pytest tests/ -v
 ```
 
-Si todas las pruebas son exitosas, deberías obtener un resultado similar a:
+Actualmente el proyecto cuenta con **28 pruebas unitarias**:
+
+| Módulo de prueba   | Qué valida                                                      | Cantidad |
+| ------------------ | --------------------------------------------------------------- | -------: |
+| `test_utils.py`    | Normalización de texto, documento y código de cita              |       15 |
+| `test_handlers.py` | Reglas de negocio para agendar, consultar, cancelar y reagendar |       13 |
+| **Total**          |                                                                 |   **28** |
+
+Resultado actual:
 
 ```text
-==================== test session starts ====================
-
-...
-
-==================== 28 passed ====================
+28 passed
 ```
 
 Estas pruebas permiten validar la lógica de negocio antes de desplegar el backend.
@@ -99,7 +103,7 @@ Antes de construir el proyecto, valida la plantilla de infraestructura:
 sam validate
 ```
 
-### 4.2 Compilar el proyecto
+### 4.2 Construir el proyecto
 
 Construye el paquete que será desplegado en AWS:
 
@@ -107,17 +111,39 @@ Construye el paquete que será desplegado en AWS:
 sam build
 ```
 
-### 4.3 Desplegar en AWS
+El proyecto utiliza:
 
-La primera vez se recomienda utilizar el modo guiado:
+```yaml
+CodeUri: src/
+```
+
+Esto indica que el contenido de `src/` será empaquetado como código de la función Lambda.
+
+Por ello, los módulos internos se importan directamente, por ejemplo:
+
+```python
+from channel_adapter import extraer_parametros
+```
+
+Después de una construcción exitosa, SAM genera los artefactos dentro de:
+
+```text
+.aws-sam/build/
+```
+
+### 4.3 Primer despliegue en AWS
+
+Si es la primera vez que despliegas el proyecto, utiliza el modo guiado:
 
 ```powershell
 sam deploy --guided
 ```
 
-Durante el proceso puedes utilizar los siguientes valores como referencia:
+Durante este proceso SAM solicitará información como el nombre del stack, región y configuración de permisos.
 
-| Parámetro                            | Valor sugerido        |
+Como referencia, puedes utilizar:
+
+| Parámetro                            | Valor                 |
 | ------------------------------------ | --------------------- |
 | Stack Name                           | `citas-medicas-stack` |
 | AWS Region                           | `us-east-1`           |
@@ -125,9 +151,9 @@ Durante el proceso puedes utilizar los siguientes valores como referencia:
 | Allow SAM CLI IAM role creation      | `Y`                   |
 | Save arguments to configuration file | `Y`                   |
 
-> **Nota:** `sam deploy --guided` puede generar un archivo `samconfig.toml` con la configuración del despliegue. Este archivo es específico de tu entorno y no es necesario para reproducir el proyecto.
+> **Nota:** `sam deploy --guided` genera un archivo `samconfig.toml` con la configuración del despliegue. Este archivo es específico de tu entorno y está excluido del repositorio mediante `.gitignore`.
 
-Una vez completada la configuración inicial, los siguientes despliegues pueden realizarse con:
+Una vez completada la configuración inicial, los siguientes despliegues pueden realizarse simplemente con:
 
 ```powershell
 sam deploy
@@ -135,35 +161,42 @@ sam deploy
 
 ---
 
-## 5. Carga de Datos Iniciales
+## 5. Cargar Datos Iniciales
 
-La tabla de DynamoDB `citas-medicas-especialidades` se crea inicialmente vacía.
-
-Para cargar las **5 especialidades iniciales**, ejecuta:
+Después del despliegue, carga las especialidades iniciales:
 
 ```powershell
 python scripts/seed_especialidades.py
 ```
 
-El script inserta los datos necesarios para que el agente pueda consultar las especialidades disponibles.
+El script carga las especialidades utilizadas por el asistente:
+
+* Medicina general
+* Pediatría
+* Odontología
+* Dermatología
+* Oftalmología
 
 ---
 
-## 6. Verificación del Despliegue
+## 6. Verificar el Despliegue
 
 ### 6.1 Consultar los Outputs del Stack
 
-Para consultar información de los recursos creados por CloudFormation:
+Para consultar los recursos creados por CloudFormation:
 
 ```powershell
-aws cloudformation describe-stacks --stack-name citas-medicas-stack --query "Stacks[0].Outputs" --output table
+aws cloudformation describe-stacks `
+  --stack-name citas-medicas-stack `
+  --query "Stacks[0].Outputs" `
+  --output table
 ```
 
-Esto permite verificar los outputs definidos en la plantilla SAM.
+Entre los outputs se encuentra el ARN de la función Lambda, que posteriormente se utiliza en la integración con Amazon Connect.
 
 ### 6.2 Invocar la función Lambda en AWS
 
-Puedes probar directamente la función Lambda desplegada utilizando uno de los eventos de prueba incluidos en el repositorio:
+Puedes probar directamente la función Lambda desplegada utilizando el evento incluido en el repositorio:
 
 ```powershell
 aws lambda invoke `
@@ -173,19 +206,25 @@ aws lambda invoke `
   respuesta.json
 ```
 
-Luego puedes revisar la respuesta:
+Después puedes revisar la respuesta:
 
 ```powershell
 Get-Content respuesta.json
 ```
 
-> Los archivos dentro de `events/` utilizan datos ficticios para las pruebas y no deben contener información real de pacientes.
+El archivo:
+
+```text
+events/evento_connect_disponibilidad.json
+```
+
+contiene datos ficticios para realizar esta prueba.
 
 ---
 
 ## 7. Prueba Local del Lambda
 
-Si tienes **Docker Desktop** instalado y ejecutándose, puedes probar la función Lambda localmente sin desplegarla nuevamente en AWS:
+Si tienes **Docker Desktop** instalado y ejecutándose, puedes probar la función Lambda localmente:
 
 ```powershell
 sam local invoke CitasMedicasFunction `
@@ -193,11 +232,13 @@ sam local invoke CitasMedicasFunction `
   --region us-east-1
 ```
 
-Esta opción es útil para validar cambios durante el desarrollo antes de realizar un nuevo despliegue.
+Esta opción permite validar cambios localmente antes de realizar un nuevo despliegue.
+
+La ejecución local con Docker es **opcional**. Si `sam local invoke` presenta problemas relacionados con Docker o la red, puedes utilizar `aws lambda invoke` para probar directamente la función desplegada en AWS.
 
 ---
 
-## Flujo de Despliegue
+## 8. Flujo de Despliegue
 
 El flujo general del backend es:
 
@@ -209,6 +250,7 @@ Entorno virtual (.venv)
      │
      ▼
 Pruebas unitarias
+28 tests
      │
      ▼
 sam validate
@@ -219,12 +261,41 @@ sam build
      ▼
 sam deploy
      │
-     ├── Lambda
+     ├── AWS Lambda
      ├── DynamoDB
-     └── IAM / Recursos AWS
+     └── IAM
+     │
+     ▼
+seed_especialidades.py
+     │
+     ▼
+Backend listo
+     │
+     ▼
+Integración con Amazon Connect
 ```
 
-Una vez desplegada la infraestructura y cargadas las especialidades, el backend queda preparado para ser integrado con **Amazon Connect**.
+Una vez desplegada la infraestructura y cargadas las especialidades, el backend queda preparado para conectarse con el **AI Agent mediante Amazon Connect**.
+
+Para configurar la integración completa con Amazon Connect, Amazon Lex y Amazon Q in Connect, consulta:
+
+[`amazon-connect-setup.md`](amazon-connect-setup.md)
+
+---
+
+## 9. Datos de Prueba y Seguridad
+
+Este proyecto utiliza **datos ficticios** para demostración y pruebas.
+
+No utilizar información real de pacientes ni datos personales en:
+
+* Archivos dentro de `events/`
+* Pruebas unitarias
+* Logs
+* Datos de desarrollo
+* Scripts de carga inicial
+
+Las credenciales de AWS tampoco deben almacenarse dentro del repositorio.
 
 ---
 
